@@ -5,7 +5,7 @@ from openai import AsyncOpenAI
 MCP_SERVER_HOST = environ.get('MCP_SERVER_HOST', 'http://localhost:8080/sse')
 LLM_API_BASE_URL = environ.get('LLM_API_BASE_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
 LLM_MODEL = environ.get('LLM_MODEL', 'qwen-max')
-LLM_API_KEY = environ.get('LLM_API_KEY', '')
+LLM_API_KEY = environ.get('LLM_API_KEY', 'sk-666814d1fbc447e4f2ab401be341a9a7598')
 
 llm_client = AsyncOpenAI(
     base_url=LLM_API_BASE_URL,

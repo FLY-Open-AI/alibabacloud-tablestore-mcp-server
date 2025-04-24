@@ -12,6 +12,7 @@ from app.models.models import (
 )
 from app.services.milvus_service import MilvusService
 
+# 创建API路由，前缀为"/api/v1"
 router = APIRouter(prefix="/api/v1")
 
 
@@ -20,6 +21,11 @@ def get_tools() -> MCPTools:
     
     Returns:
         The tools response object
+        
+    获取可用的MCP工具。
+    
+    返回:
+        工具响应对象
     """
     tools = [
         MCPTool(
@@ -52,6 +58,11 @@ async def tools() -> MCPTools:
     
     Returns:
         The tools response
+        
+    获取可用的MCP工具。
+    
+    返回:
+        工具响应
     """
     return get_tools()
 
@@ -66,6 +77,12 @@ async def store_knowledge(
     Args:
         content: The knowledge content to store
         milvus_service: The Milvus service
+        
+    在知识库中存储文档。
+    
+    参数:
+        content: 要存储的知识内容
+        milvus_service: Milvus服务对象
     """
     milvus_service.store_knowledge(content)
 
@@ -83,6 +100,15 @@ async def search_knowledge(
         
     Returns:
         List of matching documents
+        
+    在知识库中搜索文档。
+    
+    参数:
+        query: 搜索查询
+        milvus_service: Milvus服务对象
+        
+    返回:
+        匹配文档的列表
     """
     return milvus_service.search_knowledge(query.query, query.size)
 
@@ -97,6 +123,12 @@ async def store_faq(
     Args:
         content: The FAQ content to store
         milvus_service: The Milvus service
+        
+    在FAQ库中存储常见问题。
+    
+    参数:
+        content: 要存储的FAQ内容
+        milvus_service: Milvus服务对象
     """
     milvus_service.store_faq(content)
 
@@ -114,5 +146,14 @@ async def search_faq(
         
     Returns:
         List of matching FAQs
+        
+    在FAQ库中搜索常见问题。
+    
+    参数:
+        query: 搜索查询
+        milvus_service: Milvus服务对象
+        
+    返回:
+        匹配FAQ的列表
     """
     return milvus_service.search_faq(query.query, query.size) 

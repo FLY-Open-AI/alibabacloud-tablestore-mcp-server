@@ -5,7 +5,7 @@ import uvicorn
 from loguru import logger
 
 from app.api import mcp
-from app.dependencies import milvus_service
+from app.dependencies import get_milvus_service_dependency
 from app.services.milvus_service import MilvusService
 from app.utils.logging import get_logger
 
@@ -32,7 +32,7 @@ app.add_middleware(
 app.include_router(mcp.router)
 
 # Override dependency
-app.dependency_overrides[MilvusService] = milvus_service
+app.dependency_overrides[MilvusService] = get_milvus_service_dependency
 
 
 @app.get("/")
@@ -57,7 +57,7 @@ async def health_check():
 
 if __name__ == "__main__":
     # Get server port from environment variable or use default
-    port = int(os.getenv("PORT", "8000"))
+    port = int(os.getenv("PORT", "8080"))
     
     # Start server
     logger.info(f"Starting Milvus MCP Server on port {port}")

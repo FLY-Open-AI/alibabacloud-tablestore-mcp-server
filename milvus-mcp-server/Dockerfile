@@ -29,7 +29,7 @@ RUN useradd -m -u 1000 appuser && \
 USER appuser
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8080
 
 # Run the application with optimized settings
 CMD ["python", "-m", "app.main"] 

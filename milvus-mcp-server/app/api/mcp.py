@@ -11,6 +11,7 @@ from app.models.models import (
     MCPTool
 )
 from app.services.milvus_service import MilvusService
+from app.dependencies import get_milvus_service_dependency
 
 # 创建API路由，前缀为"/api/v1"
 router = APIRouter(prefix="/api/v1")
@@ -70,7 +71,7 @@ async def tools() -> MCPTools:
 @router.post("/storeKnowledge", status_code=201)
 async def store_knowledge(
     content: KnowledgeContent,
-    milvus_service: MilvusService = Depends()
+    milvus_service: MilvusService = Depends(get_milvus_service_dependency)
 ) -> None:
     """Store a document in the knowledge store.
     
@@ -90,7 +91,7 @@ async def store_knowledge(
 @router.post("/searchKnowledge")
 async def search_knowledge(
     query: SearchKnowledgeQuery,
-    milvus_service: MilvusService = Depends()
+    milvus_service: MilvusService = Depends(get_milvus_service_dependency)
 ) -> List[KnowledgeContent]:
     """Search for documents in the knowledge store.
     
@@ -116,7 +117,7 @@ async def search_knowledge(
 @router.post("/storeFAQ", status_code=201)
 async def store_faq(
     content: FAQContent,
-    milvus_service: MilvusService = Depends()
+    milvus_service: MilvusService = Depends(get_milvus_service_dependency)
 ) -> None:
     """Store an FAQ in the FAQ store.
     
@@ -136,7 +137,7 @@ async def store_faq(
 @router.post("/searchFAQ")
 async def search_faq(
     query: SearchFAQQuery,
-    milvus_service: MilvusService = Depends()
+    milvus_service: MilvusService = Depends(get_milvus_service_dependency)
 ) -> List[FAQContent]:
     """Search for FAQs in the FAQ store.
     

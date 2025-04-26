@@ -41,7 +41,7 @@ def get_milvus_service() -> MilvusService:
     return MilvusService(embedding_service)
 
 
-def milvus_service() -> Generator[MilvusService, None, None]:
+async def get_milvus_service_dependency() -> Generator[MilvusService, None, None]:
     """Milvus服务的依赖注入函数，用于FastAPI路由依赖。
     
     这是一个生成器函数，用于在FastAPI路由中注入MilvusService依赖。
@@ -53,6 +53,6 @@ def milvus_service() -> Generator[MilvusService, None, None]:
     service = get_milvus_service()
     try:
         yield service
-    except Exception:
+    finally:
         # 处理可能出现的错误，确保资源正确释放
         pass 

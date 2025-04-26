@@ -1,5 +1,3 @@
-// ... existing code ...
-
 ## 中文文档
 
 # Milvus MCP 服务器
@@ -13,23 +11,62 @@
 
 ## 前提条件
 
-1. Python 3.9+
-2. Milvus 数据库（可以通过 Docker 在本地运行或作为云服务使用）
+1. Docker 和 Docker Compose
+2. 至少 4CPU; 4GB 可用内存
+3. 至少 10GB 可用磁盘空间
 
-## 设置和运行
+## 部署方式
 
-### 环境设置
+### 方式一：使用 Docker Compose（推荐）
 
-1. 克隆仓库：
+这是最简单的部署方式，所有组件（包括 Milvus、MinIO、etcd 和 MCP 服务器）都会自动配置和启动。
+
+1. 进入项目目录：
 ```bash
-git clone <仓库-URL>
 cd milvus-mcp-server
 ```
 
-2. 创建虚拟环境（可选但推荐）：
+2. 启动所有服务：
 ```bash
-python -m venv venv
-source venv/bin/activate  # 在 Windows 上: venv\Scripts\activate
+docker-compose up -d
+
+docker compose -f docker-compose-base.yml up -d --force-recreate
+```
+
+服务启动后，MCP 服务器将在 http://localhost:8080 上可用。
+
+各个服务的端口映射：
+- MCP 服务器: 8080
+- Milvus: 19530
+- Milvus 监控: 9091
+
+如需查看服务日志：
+```bash
+# 查看所有服务日志
+docker-compose logs -f
+
+# 查看特定服务日志（例如 mcp-server）
+docker compose logs -f mcp-server
+```
+
+停止服务：
+```bash
+docker compose down
+```
+
+### 方式二：本地开发环境
+
+如果您需要进行开发或调试，可以选择本地部署方式。
+
+1. 首先启动 Milvus 及其依赖服务：
+```bash
+docker compose up -d etcd minio standalone
+```
+
+2. 创建 Python 虚拟环境：
+```bash
+python -m venv env-mcp-rag
+source env-mcp-rag/bin/activate  # Windows 上使用: env-mcp-rag\Scripts\activate
 ```
 
 3. 安装依赖：
@@ -37,10 +74,8 @@ source venv/bin/activate  # 在 Windows 上: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 配置
-
-应用程序使用环境变量进行配置。在根目录中创建一个 `.env` 文件，包含以下变量：
-
+4. 配置环境变量：
+创建 `.env` 文件并添加以下配置：
 ```
 MILVUS_HOST=localhost
 MILVUS_PORT=19530
@@ -50,27 +85,20 @@ FAQ_COLLECTION=faq_store
 VECTOR_DIMENSION=384
 ```
 
-或者，您可以直接设置这些环境变量：
-
+5. 启动服务器：
 ```bash
-export MILVUS_HOST=localhost
-export MILVUS_PORT=19530
-export EMBEDDING_MODEL=all-MiniLM-L6-v2
-export KNOWLEDGE_COLLECTION=knowledge_store
-export FAQ_COLLECTION=faq_store
-export VECTOR_DIMENSION=384
-```
-
-### 运行服务器
-
-通过以下命令启动服务器：
-
-```bash
-cd milvus-mcp-server
 python -m app.main
 ```
 
-服务器将在 http://localhost:8000 上可用
+## 系统资源配置说明
+
+当前配置针对中小规模应用优化，各服务的资源限制如下：
+- etcd: 0.5 CPU, 512MB 内存
+- MinIO: 0.5 CPU, 512MB 内存
+- Milvus: 0.5 CPU, 512MB 内存
+- MCP 服务器: 0.5 CPU, 512MB 内存
+
+如需调整资源配置，请修改 `docker-compose.yml` 中相应服务的 `deploy.resources` 部分。
 
 ## API 端点
 

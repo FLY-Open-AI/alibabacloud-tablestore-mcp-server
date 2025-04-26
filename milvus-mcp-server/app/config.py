@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     BATCH_PROCESSING_SIZE: int = 100  # Batch size for processing documents
     
     # API Configuration
-    PORT: int = 8000
+    PORT: int = 8080
     LOG_LEVEL: str = "INFO"
     
     # Resource Limits

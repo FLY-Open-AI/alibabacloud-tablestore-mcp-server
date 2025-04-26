@@ -1,7 +1,7 @@
 # MCP RAG Demo for Tablestore
 
 # 整体流程设计
-![流程图](img/1.png)
+![流程图](/doc/img/1.png)
 
 主要分为两部分：知识库构建和检索。
 

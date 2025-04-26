@@ -1,27 +1,25 @@
 
 
+## 环境设置
 
-### Python环境
-Python 3.10.12
-
+1. Python版本：
 ```bash
-root@fly:~/AI-Box/code/rag/alibabacloud-tablestore-mcp-server/tablestore-java-mcp-server-rag/knowledge-data-generator# python  -m venv  tablestore
-
-root@fly:~/AI-Box/code/rag/alibabacloud-tablestore-mcp-server/tablestore-java-mcp-server-rag/knowledge-data-generator# ll
-total 40
-drwxr-xr-x 3 root root 4096 Apr 23 18:28 ./
-drwxr-xr-x 5 root root 4096 Apr 23 14:49 ../
--rw-r--r-- 1 root root 1384 Apr 23 14:49 chunk.py
--rw-r--r-- 1 root root 3187 Apr 23 18:17 config.py
--rw-r--r-- 1 root root 7157 Apr 23 14:49 knowledge_manager.py
--rw-r--r-- 1 root root  421 Apr 23 14:49 pdf_to_markdown.py
--rwxr-xr-x 1 root root   82 Apr 23 14:49 requirements.txt*
-drwxr-xr-x 5 root root 4096 Apr 23 18:28 tablestore/
--rw-r--r-- 1 root root  631 Apr 23 14:49 tablestore_vector.md
-root@fly:~/AI-Box/code/rag/alibabacloud-tablestore-mcp-server/tablestore-java-mcp-server-rag/knowledge-data-generator# source ./tablestore/bin/activate
-
-(tablestore) root@fly:~/AI-Box/code/rag/alibabacloud-tablestore-mcp-server/tablestore-java-mcp-server-rag/knowledge-data-generator# pip install -r requirements.txt 
+Python 3.10.12
 ```
+
+2. 创建虚拟环境（可选但推荐）：
+```bash
+python -m venv env-mcp-rag
+source env-mcp-rag/bin/activate  # 在 Windows 上: venv\Scripts\activate
+```
+
+3. 安装依赖：
+```bash
+pip install -r requirements.txt
+```
+
+
+## 功能示例
 
 ### 导入知识库
 ```bash

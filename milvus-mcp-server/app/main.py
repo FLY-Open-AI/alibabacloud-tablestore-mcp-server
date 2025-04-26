@@ -1,59 +1,14 @@
 import os
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
 from loguru import logger
-
-from app.api import mcp
-from app.dependencies import get_milvus_service_dependency
-from app.services.milvus_service import MilvusService
+import uvicorn
 from app.utils.logging import get_logger
+from app.mcp_server import MilvusMCPServer
 
 # Configure logging
 logger = get_logger()
 
-# Create FastAPI app
-app = FastAPI(
-    title="Milvus MCP Server",
-    description="A Python implementation of MCP Server with Milvus as the vector database backend",
-    version="1.0.0",
-)
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
-)
-
-# Include API routers
-app.include_router(mcp.router)
-
-# Override dependency
-app.dependency_overrides[MilvusService] = get_milvus_service_dependency
-
-
-@app.get("/")
-async def root():
-    """Root endpoint.
-    
-    Returns:
-        Welcome message
-    """
-    return {"message": "Welcome to Milvus MCP Server", "docs": "/docs"}
-
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint.
-    
-    Returns:
-        Health status
-    """
-    return {"status": "healthy"}
-
+# Create MCP server instance
+mcp_server = MilvusMCPServer()
 
 if __name__ == "__main__":
     # Get server port from environment variable or use default
@@ -61,4 +16,4 @@ if __name__ == "__main__":
     
     # Start server
     logger.info(f"Starting Milvus MCP Server on port {port}")
-    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True) 
+    mcp_server.run(host="0.0.0.0", port=port) 

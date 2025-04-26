@@ -5,8 +5,8 @@ from typing import Any, List
 from contextlib import AsyncExitStack
 import asyncio
 
-import chunk
-from config import *
+import client_chunk as chunk
+from client_config import *
 import sys
 
 class MCPClient:
@@ -51,17 +51,37 @@ class MCPClient:
 
     async def connect(self):
         """
-        Establishes connection to MCP server
+        Establishes connection to MCP server with retry mechanism
         
-        建立与MCP服务器的连接
+        建立与MCP服务器的连接，包含重试机制
         """
-        self._client = sse_client(self.host, timeout=10)  # 创建SSE客户端，设置超时时间为10秒
-        # 使用异步上下文管理器栈(exit_stack)进入SSE客户端的异步上下文
-        # 这样可以确保在退出时自动关闭连接，并获取用于通信的传输对象(stdio_transport)
-        # 该传输对象包含了读写通道，用于与MCP服务器进行数据交换
-        stdio_transport = await self.exit_stack.enter_async_context(self._client)  # 进入异步上下文并获取传输对象
-        read, write = stdio_transport  # 解包获取读写通道
-        self.session = await self.exit_stack.enter_async_context(ClientSession(read, write))  # 创建并进入客户端会话
+        max_retries = 5
+        retry_delay = 2  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                self._client = sse_client(self.host, timeout=10)  # 创建SSE客户端，设置超时时间为10秒
+                # 使用异步上下文管理器栈(exit_stack)进入SSE客户端的异步上下文
+                stdio_transport = await self.exit_stack.enter_async_context(self._client)  # 进入异步上下文并获取传输对象
+                read, write = stdio_transport  # 解包获取读写通道
+                
+                # Add a short delay to ensure server initialization is complete
+                await asyncio.sleep(1)
+                
+                self.session = await self.exit_stack.enter_async_context(ClientSession(read, write))  # 创建并进入客户端会话
+                
+                # Test the connection by listing tools
+                await self.get_available_tools()
+                print(f"Successfully connected to MCP server on attempt {attempt + 1}")
+                return
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"Connection attempt {attempt + 1} failed: {e}")
+                    print(f"Retrying in {retry_delay} seconds...")
+                    await asyncio.sleep(retry_delay)
+                else:
+                    print(f"Failed to connect after {max_retries} attempts: {e}")
+                    raise
 
     async def get_available_tools(self) -> List[Any]:
         """
@@ -210,50 +230,73 @@ async def import_knowledge(path):
         path: 知识库文件路径
     """
     # 读取知识文本内容
-    knowledge_text = open(path, 'r').read()
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            knowledge_text = f.read()
+    except Exception as e:
+        print(f"Error reading file {path}: {e}")
+        return
+
     # 将文本切分成每块不超过2000字符的块
     chunks = chunk.to_chunks(knowledge_text, 2000)
+    
     # 创建并连接MCP客户端
-    async with MCPClient(MCP_SERVER_HOST) as mcp_client:
-        # 获取可用数据库工具并为LLM准备它们
-        tools = await mcp_client.get_available_tools()
-
-        print('Total Chunks: %d' % len(chunks))  # 打印块总数
-        i = 0
-        # 处理每一个文本块
-        for c in chunks:
-            print('Processing chunk %d.' % i)  # 打印当前处理的块序号
-            i = i + 1
-            # 根据模板构建分析内容的提示
-            
-            # 使用模板字符串格式化，将当前文本块c插入到分析内容提示模板中
-            # % 作为字符串格式化操作符，将变量c的值替换到模板中的%s占位符位置
-            # 这将生成一个完整的提示，要求LLM对文本进行切段和FAQ提取
-            query = analysis_content_prompt_template % c
-            # 调用agent_loop处理分析任务
-            response = await agent_loop(mcp_client, query, tools)
+    print(f"Connecting to MCP server at {MCP_SERVER_HOST}")
+    
+    try:
+        async with MCPClient(MCP_SERVER_HOST) as mcp_client:
+            # 尝试访问服务器，确保连接正常
             try:
-                # 尝试将响应解析为JSON
-                j = json.loads(response)
+                # 获取可用数据库工具并为LLM准备它们
+                tools = await mcp_client.get_available_tools()
+                if not tools:
+                    print("Warning: No tools available from the server")
             except Exception as e:
-                # 解析失败则跳过当前块
-                continue
+                print(f"Error communicating with MCP server: {e}")
+                return
 
-            # 处理解析出的文本块，存储到知识库
-            for kc in j['Chunks']:
-                # 根据模板构建存储知识的提示
-                q = store_knowledge_prompt_template % kc
-                # 调用agent_loop处理存储任务
-                response = await agent_loop(mcp_client, q, tools)
-                print(response)  # 打印存储结果
+            print('Total Chunks: %d' % len(chunks))  # 打印块总数
+            i = 0
+            # 处理每一个文本块
+            for c in chunks:
+                print('Processing chunk %d.' % i)  # 打印当前处理的块序号
+                i = i + 1
+                try:
+                    # 根据模板构建分析内容的提示
+                    query = analysis_content_prompt_template % c
+                    # 调用agent_loop处理分析任务
+                    response = await agent_loop(mcp_client, query, tools)
+                    try:
+                        # 尝试将响应解析为JSON
+                        j = json.loads(response)
+                    except Exception as e:
+                        print(f"Error parsing response: {e}")
+                        print(f"Response: {response}")
+                        continue
 
-            # 处理解析出的FAQ对，存储到FAQ库
-            for faq in j['FAQs']:
-                # 根据模板构建存储FAQ的提示
-                q = store_faq_prompt_template % (faq['Question'], faq['Answer'])
-                # 调用agent_loop处理存储任务
-                response = await agent_loop(mcp_client, q, tools)
-                print(response)  # 打印存储结果
+                    # 处理解析出的文本块，存储到知识库
+                    for kc in j.get('Chunks', []):
+                        try:
+                            # 根据模板构建存储知识的提示
+                            q = store_knowledge_prompt_template % kc
+                            # 调用agent_loop处理存储任务
+                            response = await agent_loop(mcp_client, q, tools)
+                            print(response)  # 打印存储结果
+                        except Exception as e:
+                            print(f"Error storing chunk: {e}")
+
+                    # 处理解析出的FAQ对，存储到FAQ库
+                    for faq in j.get('FAQs', []):
+                        try:
+                            q = store_faq_prompt_template % (faq.get('Question', ''), faq.get('Answer', ''))
+                            response = await agent_loop(mcp_client, q, tools)
+                            print(response)
+                        except Exception as e:
+                            print(f"Error storing FAQ: {e}")
+                except Exception as e:
+                    print(f"Error processing chunk {i}: {e}")
+    except Exception as e:
+        print(f"Connection error: {e}")
 
 async def search_knowledge(query):
     """

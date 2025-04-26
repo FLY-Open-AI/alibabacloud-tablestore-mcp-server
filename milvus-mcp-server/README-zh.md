@@ -89,6 +89,34 @@ VECTOR_DIMENSION=384
 ```bash
 python -m app.main
 ```
+启动成功信息
+```bash
+(env-mcp-rag) root@fly:~/AI-Box/code/rag/flyaibox-mcp-rag/milvus-mcp-server# python -m app.main
+2025-04-26 23:14:00 | INFO     | __main__:<module>:18 - Starting Milvus MCP Server on port 8080
+INFO:     Started server process [13541]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
+INFO:     192.168.172.1:13398 - "GET /docs HTTP/1.1" 404 Not Found
+INFO:     192.168.172.1:13398 - "GET / HTTP/1.1" 404 Not Found
+INFO:     192.168.172.1:13398 - "GET /sse HTTP/1.1" 200 OK
+```
+6. 验证服务器是否启动成功：
+http://192.168.172.128:8080/sse
+
+```bash
+event: endpoint
+data: /messages/?session_id=fef8120bae4d49508a96fa546e613329
+: ping - 2025-04-26 15:14:49.974582+00:00
+: ping - 2025-04-26 15:15:04.977367+00:00
+: ping - 2025-04-26 15:15:19.979094+00:00
+: ping - 2025-04-26 15:15:34.983508+00:00
+: ping - 2025-04-26 15:15:49.985639+00:00
+: ping - 2025-04-26 15:16:04.989747+00:00
+
+```
+
+
 
 ## 系统资源配置说明
 

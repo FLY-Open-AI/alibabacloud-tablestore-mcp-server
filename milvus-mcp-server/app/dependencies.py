@@ -41,18 +41,13 @@ def get_milvus_service() -> MilvusService:
     return MilvusService(embedding_service)
 
 
-async def get_milvus_service_dependency() -> Generator[MilvusService, None, None]:
-    """Milvus服务的依赖注入函数，用于FastAPI路由依赖。
+def get_milvus_service_dependency() -> MilvusService:
+    """Milvus服务的依赖获取函数。
     
-    这是一个生成器函数，用于在FastAPI路由中注入MilvusService依赖。
-    使用yield语句提供服务实例，并在finally块中处理异常，确保资源的正确释放。
+    返回MilvusService实例，而不是使用生成器函数。
+    这样可以避免在初始化过程中出现的问题，确保服务实例在使用前完全初始化。
     
-    Yields:
+    Returns:
         MilvusService: Milvus向量数据库服务实例
     """
-    service = get_milvus_service()
-    try:
-        yield service
-    finally:
-        # 处理可能出现的错误，确保资源正确释放
-        pass 
+    return get_milvus_service() 

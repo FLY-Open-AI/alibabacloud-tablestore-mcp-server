@@ -4,6 +4,7 @@ from loguru import logger
 from app.services.milvus_service import MilvusService
 from app.models.models import KnowledgeContent, FAQContent
 from app.dependencies import get_milvus_service_dependency
+import asyncio
 
 class MilvusMCPServer(FastMCP):
     """MCP server implementation for Milvus vector database."""
@@ -11,91 +12,89 @@ class MilvusMCPServer(FastMCP):
     def __init__(self):
         super().__init__()
         self.milvus_service = get_milvus_service_dependency()
+        self.is_ready = False
         
-        # Register tools
-        self.register_tool(
-            "storeKnowledge",
-            self.store_knowledge,
-            "Store document into knowledge store for later retrieval.",
+        # Register tools - Call directly in __init__ after service initialization
+        tool_configs = [
             {
-                "type": "object",
-                "properties": {
-                    "content": {"type": "string", "description": "The knowledge content to store"},
-                    "metadata": {
-                        "type": "object",
-                        "description": "Additional metadata for the knowledge content",
-                        "additionalProperties": True
-                    }
-                },
-                "required": ["content"]
-            }
-        )
-        
-        self.register_tool(
-            "searchKnowledge",
-            self.search_knowledge,
-            "Search for similar documents on natural language descriptions from knowledge store.",
+                "name": "storeKnowledge",
+                "fn": self.store_knowledge,
+                "description": "Store document into knowledge store for later retrieval.",
+            },
             {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "The search query"},
-                    "size": {"type": "integer", "description": "Number of results to return", "default": 5}
-                },
-                "required": ["query"]
-            }
-        )
-        
-        self.register_tool(
-            "storeFAQ",
-            self.store_faq,
-            "Store document into FAQ store for later retrieval.",
+                "name": "searchKnowledge",
+                "fn": self.search_knowledge,
+                "description": "Search for similar documents on natural language descriptions from knowledge store.",
+            },
             {
-                "type": "object",
-                "properties": {
-                    "question": {"type": "string", "description": "The FAQ question"},
-                    "answer": {"type": "string", "description": "The FAQ answer"},
-                    "metadata": {
-                        "type": "object",
-                        "description": "Additional metadata for the FAQ",
-                        "additionalProperties": True
-                    }
-                },
-                "required": ["question", "answer"]
-            }
-        )
-        
-        self.register_tool(
-            "searchFAQ",
-            self.search_faq,
-            "Search for similar documents on natural language descriptions from FAQ store.",
+                "name": "storeFAQ",
+                "fn": self.store_faq,
+                "description": "Store document into FAQ store for later retrieval.",
+            },
             {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "The search query"},
-                    "size": {"type": "integer", "description": "Number of results to return", "default": 5}
-                },
-                "required": ["query"]
+                "name": "searchFAQ",
+                "fn": self.search_faq,
+                "description": "Search for similar documents on natural language descriptions from FAQ store.",
             }
-        )
+        ]
         
-    async def store_knowledge(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        """Store knowledge content in Milvus."""
-        try:
-            content = KnowledgeContent(
-                content=args["content"],
-                metadata=args.get("metadata", {})
+        # Register each tool directly with the server
+        for config in tool_configs:
+            self.add_tool(
+                fn=config["fn"],
+                name=config["name"],
+                description=config["description"]
             )
-            await self.milvus_service.store_knowledge(content)
+            logger.info(f"Registered tool: {config['name']}")
+            
+        # Set server as ready after tools are registered
+        self.is_ready = True
+        
+    def run(self, transport='sse'):
+        """Override run method to add startup event handling"""
+        # Log startup event directly
+        logger.info("MCP Server startup event")
+        # Set server as ready before running
+        self.is_ready = True
+        logger.info("MCP Server is ready for connections")
+        
+        # Call parent run method
+        super().run(transport=transport)
+        
+    async def ready_for_connections(self):
+        """Check if server is ready to accept connections"""
+        # If not ready, wait for a bit
+        if not self.is_ready:
+            logger.warning("Server not ready yet - waiting")
+            for _ in range(5):  # Try 5 times with 1s intervals
+                await asyncio.sleep(1)
+                if self.is_ready:
+                    break
+        return self.is_ready
+            
+    async def store_knowledge(self, content: str, metadata: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Store knowledge content in Milvus."""
+        # Ensure server is ready before processing
+        await self.ready_for_connections()
+        
+        try:
+            knowledge_content = KnowledgeContent(
+                content=content,
+                metadata=metadata or {}
+            )
+            self.milvus_service.store_knowledge(knowledge_content)
             return {"status": "success", "message": "Knowledge stored successfully"}
         except Exception as e:
             logger.error(f"Error storing knowledge: {e}")
             return {"status": "error", "message": str(e)}
             
-    async def search_knowledge(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    async def search_knowledge(self, query: str, size: int = 5) -> Dict[str, Any]:
         """Search knowledge content in Milvus."""
+        # Ensure server is ready before processing
+        await self.ready_for_connections()
+        
         try:
-            size = args.get("size", 5)
-            results = await self.milvus_service.search_knowledge(args["query"], size)
+            results = self.milvus_service.search_knowledge(query, size)
             return {
                 "status": "success",
                 "results": [result.dict() for result in results]
@@ -104,25 +103,30 @@ class MilvusMCPServer(FastMCP):
             logger.error(f"Error searching knowledge: {e}")
             return {"status": "error", "message": str(e)}
             
-    async def store_faq(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    async def store_faq(self, question: str, answer: str, metadata: Dict[str, Any] = None) -> Dict[str, Any]:
         """Store FAQ content in Milvus."""
+        # Ensure server is ready before processing
+        await self.ready_for_connections()
+        
         try:
             content = FAQContent(
-                question=args["question"],
-                answer=args["answer"],
-                metadata=args.get("metadata", {})
+                question=question,
+                answer=answer,
+                metadata=metadata or {}
             )
-            await self.milvus_service.store_faq(content)
+            self.milvus_service.store_faq(content)
             return {"status": "success", "message": "FAQ stored successfully"}
         except Exception as e:
             logger.error(f"Error storing FAQ: {e}")
             return {"status": "error", "message": str(e)}
             
-    async def search_faq(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    async def search_faq(self, query: str, size: int = 5) -> Dict[str, Any]:
         """Search FAQ content in Milvus."""
+        # Ensure server is ready before processing
+        await self.ready_for_connections()
+        
         try:
-            size = args.get("size", 5)
-            results = await self.milvus_service.search_faq(args["query"], size)
+            results = self.milvus_service.search_faq(query, size)
             return {
                 "status": "success",
                 "results": [result.dict() for result in results]
